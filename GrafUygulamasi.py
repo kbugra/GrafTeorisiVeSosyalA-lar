@@ -18,6 +18,30 @@ class GrafUygulamasi:
             self.matrix = np.zeros((self.num_nodes, self.num_nodes), dtype=int)
             self.adj_list = {i: [] for i in range(self.num_nodes)}
             
+    # -------------------------------------------------------------
+    # HAFTA 3: Dosyadan Matris Okuma (ReadGraph) İşlemi
+    # -------------------------------------------------------------
+    @classmethod
+    def from_txt_file(cls, filepath, directed=True):
+        """Hafta 3 slaytlarındaki/kodlarındaki ReadGraph mantığını uygular.
+        Bir .txt dosyasındaki virgülle ayrılmış 0 ve 1'leri matris yapar."""
+        try:
+            with open(filepath, 'r') as f:
+                lines = f.readlines()
+            n = len(lines)
+            matris = np.zeros([n, n], dtype=int)
+            for i in range(n):
+                s = lines[i].replace('\n', '').strip().split(',')
+                # Boşluk vb istenmeyen değerleri elediğimizden emin olalım
+                s = [val for val in s if val != '']
+                for j in range(len(s)):
+                    if j < n:
+                        matris[i, j] = int(s[j])
+            return cls(matris.tolist(), directed=directed)
+        except Exception as e:
+            print(f"Dosya okuma hatası: {e}")
+            return None
+            
     def _matrix_to_adj_list(self):
         adj_list = {i: [] for i in range(self.num_nodes)}
         for i in range(self.num_nodes):
@@ -52,34 +76,43 @@ class GrafUygulamasi:
             print(f"{node} -> {edges}")
 
     # -------------------------------------------------------------
-    # HAFTA 4: DFS Çıkarımları, Keşif/Bitiş Zamanı ve Transpoz Graf
+    # HAFTA 3 & 4: DFS Çıkarımları (V ve F Dizileri) ve Transpoz Graf
     # -------------------------------------------------------------
-    def dfs(self, start_node=0):
+    def dfs(self, start_node=0, labels=None):
+        """Hafta 3'teki DFS mantığına uygun (V: Keşif Zamanı, F: Bitiş Zamanı)"""
         print("\n--- DFS (Depth First Search) İŞLEMİ ---")
-        visited = [False] * self.num_nodes
-        discovery_time = [0] * self.num_nodes
-        finish_time = [0] * self.num_nodes
-        self.time_counter = 0
+        visited = [0] * self.num_nodes # V: Ziyaret edilme (0 ise gidilmemiş, doluysa Time)
+        finish_time = [0] * self.num_nodes # F: Bitiş zamanı
+        time_counter = [0] # global T
 
         def dfs_recursive(node):
-            if not visited[node]:
-                self.time_counter += 1
-                discovery_time[node] = self.time_counter
-                visited[node] = True
-                print(f"Ziyaret Edilen Düğüm: {node} (Keşif Zamanı: {discovery_time[node]})")
-                for neigh in self.adj_list[node]:
-                    dfs_recursive(neigh)
-                self.time_counter += 1
-                finish_time[node] = self.time_counter
+            if visited[node] == 0:
+                time_counter[0] += 1
+                visited[node] = time_counter[0]
+                
+                # Hafta 3 kodundaki gibi komşuluk matrisi (G) üzerinden gitme mantığı
+                for j in range(self.num_nodes):
+                    if self.matrix[node, j] == 1:
+                        dfs_recursive(j)
+                        
+                time_counter[0] += 1
+                finish_time[node] = time_counter[0]
 
-        # Ayrı bileşenler (disconnected components) için tüm düğümleri dolaşalım
+        # Eğer istenen bir düğüm (ör: node 5) varsa oradan başlatıyoruz
+        dfs_recursive(start_node)
+
+        # Diğer tamamlanmamış (disconnected) bileşenler için devam edelim
         for i in range(self.num_nodes):
-             if not visited[i]:
+             if visited[i] == 0:
                   dfs_recursive(i)
         
-        print("\nDFS Zaman Çizelgesi:")
+        # Hafta 3 kodlarındaki Label'lı ekran çıktısı formatı
+        print("Düğüm | Keşif(V) | Bitiş(F)")
         for i in range(self.num_nodes):
-            print(f"Düğüm {i} | Keşif (disc): {discovery_time[i]} | Bitiş (finish): {finish_time[i]}")
+            node_name = labels[i] if (labels and i < len(labels)) else str(i)
+            print(f"{node_name} {visited[i]} {finish_time[i]}")
+        
+        return visited, finish_time
             
     def get_transpose(self):
         """Yönlü grafta kenarların yönünü tersine çevirerek Transpoz grafını döndürür."""
@@ -221,14 +254,19 @@ def main():
 
     graf_sistemi = GrafUygulamasi(matris, directed=False)
     
+    # Hafta 3 kapsamında dosyadan veri okuma test örneği (Eğer dosya varsa çalışır)
+    # df_graf = GrafUygulamasi.from_txt_file("sourcecodes/G.txt") veya benzeri
+    
     # 1. ve 2. Hafta Konuları
     graf_sistemi.print_representation()
     in_deg, out_deg = graf_sistemi.get_degrees()
     print("\nIn-degree:", in_deg)
     print("Out-degree:", out_deg)
 
-    # 4. Hafta Konuları
-    graf_sistemi.dfs()
+    # 3. ve 4. Hafta Konuları: Etiketlerle (Label) DFS
+    labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
+    # start_node = 5 (Hafta 3 görsellerindeki DFS(5,...) mantığı), labels kullanıldı
+    graf_sistemi.dfs(start_node=5, labels=labels)
     
     print("\n--- GRAF TRANSPOZ İŞLEMİ ---")
     transpose_graf = graf_sistemi.get_transpose()
